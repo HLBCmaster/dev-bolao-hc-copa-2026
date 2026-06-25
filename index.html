@@ -49,7 +49,7 @@
     {id:'f',  label:'Final',   slots:1, pi:4},
     {id:'tp', label:'3º Lugar',slots:1, pi:-1},
   ];
-  const BK={cardH:68,cardW:180,connW:22,strideBase:76};
+  const BK={cardH:88,cardW:196,connW:22,strideBase:96};
   BK.totalH=16*BK.strideBase-8;
   const bkLayout=pi=>{const stride=BK.strideBase*Math.pow(2,pi);return{stride,firstTop:Math.round(stride/2-BK.cardH/2)};};
   const KO_SEED=[];
@@ -411,7 +411,6 @@
           <p>📌 <b>Vitória correta (sem placar exato) + quem avança:</b> 10 + 10 = <b className="text-emerald-600">20 pts</b></p>
           <p>🤝 <b>Empate exato + quem avança certo:</b> 15 + 10 = <b className="text-emerald-600">25 pts</b></p>
           <p>🤝 <b>Empate (sem exato) + quem avança certo:</b> 10 + 10 = <b className="text-emerald-600">20 pts</b></p>
-          <p className="text-gray-400 mt-1">Ao apostar vitória de um time, o "quem avança" é selecionado automaticamente.</p>
         </div>
         <div className="bk-scroll rounded-2xl border border-gray-200" style={{background:'#ffffff',padding:'12px 12px 16px'}}>
           <div style={{display:'flex',alignItems:'flex-start',gap:0}}>
@@ -427,26 +426,37 @@
                         const koBet=(profile.koBets||{})[m.id];
                         const cEdit=!!(m.team1&&m.team2&&!m.result&&(!m.kickoff||!isLocked(m.kickoff))&&(!koBet||koBet.changes<1));
                         const pts=koPoints(koBet,m);
+                        const teamRowH=Math.floor((BK.cardH-22)/2); // 22px para o header
                         return(
                           <div key={m.id} style={{position:'absolute',top:layout.firstTop+i*layout.stride,width:BK.cardW}} onClick={()=>setOpenId(m.id)}>
-                            {m.kickoff&&<p className="text-center text-gray-400 mb-0.5" style={{fontSize:'9px'}}>{fmtDate(m.kickoff)} {fmtTime(m.kickoff)}</p>}
-                            <div className={`rounded-xl overflow-hidden cursor-pointer border-2 relative ${m.result?'bg-white border-emerald-400':cEdit?'bg-white border-yellow-300':m.team1&&m.team2?'bg-gray-100 border-gray-300':'bg-gray-50 border-gray-200'}`} style={{height:BK.cardH}}>
-                              <div className={`flex items-center px-2 gap-1.5 border-b border-gray-100 ${m.winner==='team1'?'bg-emerald-50':''}`} style={{height:BK.cardH/2}}>
-                                <Flag name={m.team1} size="sm"/>
-                                <span className={`text-xs font-semibold flex-1 truncate ${m.team1?'text-gray-800':'text-gray-400'}`} style={{fontSize:'11px'}}>{tname(m.team1||'?')}</span>
-                                {m.result&&<span className={`font-bold w-4 text-right shrink-0 ${m.winner==='team1'?'text-emerald-600':'text-gray-500'}`} style={{fontSize:'11px'}}>{m.result.split('-')[0]}</span>}
-                                {!m.result&&koBet?.guess&&<span className="text-gray-400 shrink-0 font-bold" style={{fontSize:'10px'}}>{koBet.guess.split('-')[0]}</span>}
-                                {m.winner==='team1'&&<span className="text-emerald-500 text-xs ml-0.5 shrink-0">▶</span>}
+                            <div className={`rounded-xl overflow-hidden cursor-pointer border-2 relative shadow-sm ${m.result?'border-emerald-400':cEdit?'border-yellow-300':m.team1&&m.team2?'border-gray-300':'border-gray-200'}`} style={{height:BK.cardH}}>
+                              {/* Header verde com data/hora — igual à fase de grupos */}
+                              <div className="flex items-center justify-between px-2" style={{height:22,background:'linear-gradient(135deg,#064e3b,#065f46)'}}>
+                                {m.kickoff
+                                  ? <span className="text-emerald-200 font-medium" style={{fontSize:'10px'}}>{fmtDate(m.kickoff)} às {fmtTime(m.kickoff)}</span>
+                                  : <span className="text-emerald-300" style={{fontSize:'10px'}}>A definir</span>
+                                }
+                                {m.result&&pts>0&&<span className="text-yellow-300 font-bold" style={{fontSize:'10px'}}>+{pts}pts</span>}
+                                {!m.result&&cEdit&&<span className="text-yellow-300 font-bold" style={{fontSize:'9px'}}>⏰</span>}
+                                {!m.result&&!cEdit&&(m.team1&&m.team2)&&<span className="text-orange-300 font-bold" style={{fontSize:'9px'}}>🔒</span>}
                               </div>
-                              <div className={`flex items-center px-2 gap-1.5 ${m.winner==='team2'?'bg-emerald-50':''}`} style={{height:BK.cardH/2}}>
+                              {/* Time 1 */}
+                              <div className={`flex items-center px-2 gap-1.5 border-b border-gray-100 ${m.winner==='team1'?'bg-emerald-50':m.result?'bg-white':'bg-white'}`} style={{height:teamRowH}}>
+                                <Flag name={m.team1} size="sm"/>
+                                <span className={`font-semibold flex-1 truncate ${m.team1?'text-gray-800':'text-gray-400'}`} style={{fontSize:'12px'}}>{tname(m.team1||'?')}</span>
+                                {m.result&&<span className={`font-bold shrink-0 ${m.winner==='team1'?'text-emerald-600':'text-gray-500'}`} style={{fontSize:'13px',minWidth:14,textAlign:'right'}}>{m.result.split('-')[0]}</span>}
+                                {!m.result&&koBet?.guess&&<span className="text-blue-400 shrink-0 font-bold" style={{fontSize:'11px'}}>{koBet.guess.split('-')[0]}</span>}
+                                {m.winner==='team1'&&<span className="text-emerald-500 shrink-0 ml-0.5" style={{fontSize:'11px'}}>▶</span>}
+                              </div>
+                              {/* Time 2 */}
+                              <div className={`flex items-center px-2 gap-1.5 ${m.winner==='team2'?'bg-emerald-50':m.result?'bg-white':'bg-white'}`} style={{height:teamRowH}}>
                                 <Flag name={m.team2} size="sm"/>
-                                <span className={`text-xs font-semibold flex-1 truncate ${m.team2?'text-gray-800':'text-gray-400'}`} style={{fontSize:'11px'}}>{tname(m.team2||'?')}</span>
-                                {m.result&&<span className={`font-bold w-4 text-right shrink-0 ${m.winner==='team2'?'text-emerald-600':'text-gray-500'}`} style={{fontSize:'11px'}}>{m.result.split('-')[1]}</span>}
-                                {!m.result&&koBet?.guess&&<span className="text-gray-400 shrink-0 font-bold" style={{fontSize:'10px'}}>{koBet.guess.split('-')[1]}</span>}
-                                {m.winner==='team2'&&<span className="text-emerald-500 text-xs ml-0.5 shrink-0">▶</span>}
+                                <span className={`font-semibold flex-1 truncate ${m.team2?'text-gray-800':'text-gray-400'}`} style={{fontSize:'12px'}}>{tname(m.team2||'?')}</span>
+                                {m.result&&<span className={`font-bold shrink-0 ${m.winner==='team2'?'text-emerald-600':'text-gray-500'}`} style={{fontSize:'13px',minWidth:14,textAlign:'right'}}>{m.result.split('-')[1]}</span>}
+                                {!m.result&&koBet?.guess&&<span className="text-blue-400 shrink-0 font-bold" style={{fontSize:'11px'}}>{koBet.guess.split('-')[1]}</span>}
+                                {m.winner==='team2'&&<span className="text-emerald-500 shrink-0 ml-0.5" style={{fontSize:'11px'}}>▶</span>}
                               </div>
                               {koBet?.guess&&!m.result&&<div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-yellow-400"/>}
-                              {m.result&&pts>0&&<div className="absolute top-0 right-0 bg-emerald-500 text-white font-bold px-1.5 py-0.5 rounded-bl-lg" style={{fontSize:'10px'}}>+{pts}</div>}
                             </div>
                           </div>
                         );
