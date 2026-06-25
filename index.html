@@ -244,10 +244,10 @@
     const cx=BK.connW/2; const lines=[];
     for(let i=0;i<slots;i+=2){
       const y1=fp+i*sp+BK.cardH/2, y2=fp+(i+1)*sp+BK.cardH/2, ym=(y1+y2)/2;
-      lines.push(<line key={`a${i}`} x1="0" y1={y1} x2={cx} y2={y1} stroke="#34d399" strokeWidth="1.5" opacity="0.5"/>);
-      lines.push(<line key={`b${i}`} x1={cx} y1={y1} x2={cx} y2={y2} stroke="#34d399" strokeWidth="1.5" opacity="0.5"/>);
-      lines.push(<line key={`c${i}`} x1="0" y1={y2} x2={cx} y2={y2} stroke="#34d399" strokeWidth="1.5" opacity="0.5"/>);
-      lines.push(<line key={`d${i}`} x1={cx} y1={ym} x2={BK.connW} y2={ym} stroke="#34d399" strokeWidth="1.5" opacity="0.5"/>);
+      lines.push(<line key={`a${i}`} x1="0" y1={y1} x2={cx} y2={y1} stroke="#10b981" strokeWidth="1.5" opacity="0.8"/>);
+      lines.push(<line key={`b${i}`} x1={cx} y1={y1} x2={cx} y2={y2} stroke="#10b981" strokeWidth="1.5" opacity="0.8"/>);
+      lines.push(<line key={`c${i}`} x1="0" y1={y2} x2={cx} y2={y2} stroke="#10b981" strokeWidth="1.5" opacity="0.8"/>);
+      lines.push(<line key={`d${i}`} x1={cx} y1={ym} x2={BK.connW} y2={ym} stroke="#10b981" strokeWidth="1.5" opacity="0.8"/>);
     }
     return <svg width={BK.connW} height={BK.totalH} style={{flexShrink:0,marginTop:26}} fill="none">{lines}</svg>;
   }
@@ -639,10 +639,26 @@
                 const totalBets=allUsers.reduce((s,u)=>s+Object.values(u.bets||{}).filter(b=>b&&b.guess).length,0);
                 const avgBets=totalUsers?Math.round(totalBets/totalUsers):0;
                 const tally=field=>{const o={};allUsers.forEach(u=>{const v=(u.predictions||{})[field];if(v&&v.trim()){const k=v.trim();o[k]=(o[k]||0)+1;}});return Object.entries(o).sort((a,b)=>b[1]-a[1]).slice(0,6);};
-                const champList=tally("champion"),scorerList=tally("topscorer");
-                const maxC=champList.length?champList[0][1]:1,maxS=scorerList.length?scorerList[0][1]:1;
-                const Bar=({label,count,max,color})=>(<div className="flex items-center gap-2"><span className="text-xs text-gray-600 w-24 truncate shrink-0">{label}</span><div className="flex-1 bg-gray-100 rounded-full h-3 min-w-0"><div className="h-3 rounded-full" style={{width:(count/max*100)+"%",background:color}}></div></div><span className="text-xs font-bold text-gray-600 w-6 text-right shrink-0">{count}</span></div>);
-                return(<div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100"><h3 className="font-bold text-gray-800 mb-3">📊 Visão geral</h3><div className="grid grid-cols-2 gap-2 mb-4"><div className="bg-emerald-50 rounded-xl p-3 text-center"><p className="text-2xl font-bold text-emerald-600">{totalUsers}</p><p className="text-xs text-gray-500">Participantes</p></div><div className="bg-blue-50 rounded-xl p-3 text-center"><p className="text-2xl font-bold text-blue-600">{totalUsers?Math.round(submitted/totalUsers*100):0}%</p><p className="text-xs text-gray-500">Enviaram previsões</p></div><div className="bg-purple-50 rounded-xl p-3 text-center"><p className="text-2xl font-bold text-purple-600">{totalBets}</p><p className="text-xs text-gray-500">Apostas totais</p></div><div className="bg-amber-50 rounded-xl p-3 text-center"><p className="text-2xl font-bold text-amber-600">{avgBets}</p><p className="text-xs text-gray-500">Média por pessoa</p></div></div><p className="text-xs font-semibold text-gray-600 mb-2">🏆 Palpites de campeão</p>{champList.length===0?<p className="text-xs text-gray-400 mb-4">Ninguém palpitou ainda.</p>:<div className="space-y-1.5 mb-4">{champList.map(([n,c],i)=><Bar key={i} label={tname(n)} count={c} max={maxC} color="#10b981"/>)}</div>}<p className="text-xs font-semibold text-gray-600 mb-2">⚽ Palpites de artilheiro</p>{scorerList.length===0?<p className="text-xs text-gray-400">Ninguém palpitou ainda.</p>:<div className="space-y-1.5">{scorerList.map(([n,c],i)=><Bar key={i} label={n} count={c} max={maxS} color="#8b5cf6"/>)}</div>}</div>);
+                const Bar=({label,count,max,color})=>(<div className="flex items-center gap-2 mb-1.5"><span className="text-xs text-gray-600 w-24 truncate shrink-0">{label}</span><div className="flex-1 bg-gray-100 rounded-full h-3 min-w-0"><div className="h-3 rounded-full" style={{width:(count/max*100)+"%",background:color}}></div></div><span className="text-xs font-bold text-gray-600 w-5 text-right shrink-0">{count}</span></div>);
+                const predColors=["#10b981","#3b82f6","#f59e0b","#8b5cf6","#ec4899"];
+                return(<div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
+                  <h3 className="font-bold text-gray-800 mb-3">📊 Visão geral</h3>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="bg-emerald-50 rounded-xl p-3 text-center"><p className="text-2xl font-bold text-emerald-600">{totalUsers}</p><p className="text-xs text-gray-500">Participantes</p></div>
+                    <div className="bg-blue-50 rounded-xl p-3 text-center"><p className="text-2xl font-bold text-blue-600">{totalUsers?Math.round(submitted/totalUsers*100):0}%</p><p className="text-xs text-gray-500">Enviaram previsões</p></div>
+                    <div className="bg-purple-50 rounded-xl p-3 text-center"><p className="text-2xl font-bold text-purple-600">{totalBets}</p><p className="text-xs text-gray-500">Apostas totais</p></div>
+                    <div className="bg-amber-50 rounded-xl p-3 text-center"><p className="text-2xl font-bold text-amber-600">{avgBets}</p><p className="text-xs text-gray-500">Média por pessoa</p></div>
+                  </div>
+                  {PRED_LABELS.map((p,pi)=>{
+                    const data=tally(p.key);const maxV=data.length?data[0][1]:1;
+                    const color=predColors[pi]||"#6b7280";
+                    const isTeam=["champion","vicechampion","third"].includes(p.key);
+                    return(<div key={p.key} className="mb-4 last:mb-0">
+                      <p className="text-xs font-semibold text-gray-600 mb-1.5">{p.label}</p>
+                      {data.length===0?<p className="text-xs text-gray-400">Nenhum palpite ainda.</p>:<div>{data.map(([n,c],i)=><Bar key={i} label={isTeam?tname(n):n} count={c} max={maxV} color={color}/>)}</div>}
+                    </div>);
+                  })}
+                </div>);
               })()}
               <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100"><h3 className="font-bold text-gray-800 mb-2">🏅 Resultados finais (previsões)</h3><p className="text-xs text-gray-500 mb-3">Preencha ao fim da Copa. Salva ao clicar fora.</p>{PRED_LABELS.map(p=>{const isTeam=["champion","vicechampion","third"].includes(p.key);return(<div key={p.key} className="flex items-center gap-2 mb-2"><span className="text-xs text-gray-600 w-36">{p.label}</span>{isTeam?<select value={(official||{})[p.key]||""} onChange={e=>saveOfficial(p.key,e.target.value)} className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"><option value="">Selecione...</option>{teamOptions.map((o,i)=><option key={i} value={o}>{o}</option>)}</select>:<input defaultValue={(official||{})[p.key]||""} onBlur={e=>saveOfficial(p.key,e.target.value)} placeholder="resposta oficial" className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-emerald-400"/>}</div>);})}<p className="text-xs text-gray-400 mt-2">Salva automaticamente ao clicar fora do campo.</p></div>
               <p className="text-xs text-gray-400">💡 Para lançar placares da Fase de Grupos use o campo roxo na aba <b>Fase de Grupos</b>. Para o Mata-Mata, toque no jogo na aba <b>Mata-Mata</b>.</p>
