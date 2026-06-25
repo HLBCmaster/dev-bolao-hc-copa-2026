@@ -49,7 +49,7 @@
     {id:'f',  label:'Final',   slots:1, pi:4},
     {id:'tp', label:'3º Lugar',slots:1, pi:-1},
   ];
-  const BK={cardH:88,cardW:196,connW:22,strideBase:96};
+  const BK={cardH:104,cardW:220,connW:26,strideBase:114};
   BK.totalH=16*BK.strideBase-8;
   const bkLayout=pi=>{const stride=BK.strideBase*Math.pow(2,pi);return{stride,firstTop:Math.round(stride/2-BK.cardH/2)};};
   const KO_SEED=[];
@@ -369,8 +369,8 @@
             <div className="mt-4 pt-4 border-t border-gray-100">
               <p className="text-xs font-bold text-purple-600 mb-3">⚙️ Controles do Admin</p>
               <div className="grid grid-cols-2 gap-2 mb-2">
-                <div><label className="text-xs text-gray-500">Time 1</label><select value={eT1} onChange={e=>{setET1(e.target.value);if(e.target.value)onSaveKO(m.id,{team1:e.target.value});}} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"><option value="">Selecione o time...</option>{Object.entries(T).sort((a,b)=>a[1].localeCompare(b[1],'pt')).map(([en,pt])=><option key={en} value={en}>{pt}</option>)}</select></div>
-                <div><label className="text-xs text-gray-500">Time 2</label><select value={eT2} onChange={e=>{setET2(e.target.value);if(e.target.value)onSaveKO(m.id,{team2:e.target.value});}} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"><option value="">Selecione o time...</option>{Object.entries(T).sort((a,b)=>a[1].localeCompare(b[1],'pt')).map(([en,pt])=><option key={en} value={en}>{pt}</option>)}</select></div>
+                <div><label className="text-xs text-gray-500">Time 1</label><select value={eT1} onChange={e=>{const v=e.target.value;setET1(v);onSaveKO(m.id,{team1:v});}} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"><option value="">— limpar time 1 —</option>{Object.entries(T).sort((a,b)=>a[1].localeCompare(b[1],'pt')).map(([en,pt])=><option key={en} value={en}>{pt}</option>)}</select></div>
+                <div><label className="text-xs text-gray-500">Time 2</label><select value={eT2} onChange={e=>{const v=e.target.value;setET2(v);onSaveKO(m.id,{team2:v});}} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"><option value="">— limpar time 2 —</option>{Object.entries(T).sort((a,b)=>a[1].localeCompare(b[1],'pt')).map(([en,pt])=><option key={en} value={en}>{pt}</option>)}</select></div>
               </div>
               <div className="mb-2">
                 <label className="text-xs text-gray-500">Data e hora do jogo (SP)</label>
@@ -759,7 +759,7 @@
             <div className="space-y-4">
               <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
                 <h3 className="font-bold text-gray-800 mb-3">👥 Apostas por participante ({allUsers.length})</h3>
-                <div className="space-y-3">{[...allUsers].map(u=>({name:u.displayName||"(sem nome)",total:Object.values(u.bets||{}).filter(b=>b&&b.guess).length,pts:userTotal(u,matches,koMatches,official)})).sort((a,b)=>b.total-a.total).map((u,i)=>{const pct=matches.length>0?Math.round((u.total/matches.length)*100):0;return(<div key={i} className="flex items-center gap-2"><span className="text-sm font-medium text-gray-700 w-24 truncate shrink-0">{u.name}</span><div className="flex-1 bg-gray-100 rounded-full h-2 min-w-0"><div className="bg-emerald-500 h-2 rounded-full" style={{width:pct+"%"}}></div></div><span className="text-xs font-bold text-gray-600 w-12 text-right shrink-0">{u.total}/{matches.length}</span><span className="text-xs text-emerald-600 font-bold w-14 text-right shrink-0">{u.pts} pts</span></div>);})}{allUsers.length===0&&<p className="text-xs text-gray-400">Nenhum participante ainda.</p>}</div>
+                <div className="space-y-3">{[...allUsers].map(u=>({name:u.displayName||"(sem nome)",groupBets:Object.values(u.bets||{}).filter(b=>b&&b.guess).length,koBets:Object.values(u.koBets||{}).filter(b=>b&&b.guess).length,pts:userTotal(u,matches,koMatches,official)})).sort((a,b)=>(b.groupBets+b.koBets)-(a.groupBets+a.koBets)).map((u,i)=>{const total=u.groupBets+u.koBets;const totalJogos=(matches.length||72)+(koMatches.length||32);const pct=totalJogos>0?Math.round((total/totalJogos)*100):0;return(<div key={i} className="space-y-0.5"><div className="flex items-center gap-2"><span className="text-sm font-medium text-gray-700 w-24 truncate shrink-0">{u.name}</span><div className="flex-1 bg-gray-100 rounded-full h-2 min-w-0"><div className="bg-emerald-500 h-2 rounded-full transition-all" style={{width:pct+"%"}}></div></div><span className="text-xs font-bold text-gray-600 w-16 text-right shrink-0">{total}/{totalJogos}</span><span className="text-xs text-emerald-600 font-bold w-14 text-right shrink-0">{u.pts} pts</span></div><div className="flex gap-1 pl-26 ml-[6.5rem]"><span className="text-xs text-gray-400">GF: <b className="text-gray-600">{u.groupBets}</b></span><span className="text-gray-300 text-xs">·</span><span className="text-xs text-gray-400">MM: <b className="text-gray-600">{u.koBets}</b></span></div></div>);})}{allUsers.length===0&&<p className="text-xs text-gray-400">Nenhum participante ainda.</p>}</div>
               </div>
               <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
                 <h3 className="font-bold text-gray-800 mb-3">🌟 Previsões enviadas ({allUsers.filter(u=>u.predSubmitted).length}/{allUsers.length})</h3>
