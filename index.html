@@ -474,8 +474,6 @@
     const[tab,setTab]=useState("placares");const[menuOpen,setMenuOpen]=useState(false);
     const[resultDrafts,setResultDrafts]=useState({});const[msg,setMsg]=useState("");
     const[editingTeam,setEditingTeam]=useState(null);const[groupRounds,setGroupRounds]=useState({});const[showPast,setShowPast]=useState(false);
-    // Ranking position tracking: store previous positions in sessionStorage
-    const[prevRanks,setPrevRanks]=useState({});
     const isAdmin=user&&user.email===ADMIN_EMAIL;
     const deadlinePassed=new Date()>DEADLINE;
     const daysLeft=Math.max(0,Math.ceil((DEADLINE-new Date())/86400000));
@@ -496,6 +494,18 @@
       const u4=db.collection("knockout").onSnapshot(s=>setKoMatches(s.docs.map(d=>d.data())));
       return()=>{u1();u2();u3();u4();};
     },[user,needName]);
+
+    // Save current ranks to sessionStorage (computed inline to avoid sorted dependency)
+    useEffect(()=>{
+      if(allUsers.length===0)return;
+      const sortedForRank=[...allUsers].map(u=>({uid:u.uid,pts:userTotal(u,matches,koMatches,official)})).sort((a,b)=>b.pts-a.pts);
+      sortedForRank.forEach((u,i)=>{
+        const key="bolao_prev_rank_"+u.uid;
+        if(!sessionStorage.getItem(key)) sessionStorage.setItem(key,String(i+1));
+      });
+      const t=setTimeout(()=>{sortedForRank.forEach((u,i)=>sessionStorage.setItem("bolao_prev_rank_"+u.uid,String(i+1)));},60000);
+      return()=>clearTimeout(t);
+    },[allUsers.length,matches.length,koMatches.length]);
 
     const login=async()=>{try{setLoginInProgress(true);await auth.signInWithPopup(provider);}catch(e){setLoginInProgress(false);setMsg("Erro no login: "+e.message);}};
     const logout=()=>auth.signOut();
@@ -574,17 +584,7 @@
       if(isNaN(prevNum))return null;
       return prevNum-curRank; // positive = went up
     };
-    // Save current ranks to sessionStorage once
-    useEffect(()=>{
-      if(sorted.length===0)return;
-      sorted.forEach((u,i)=>{
-        const key="bolao_prev_rank_"+u.uid;
-        if(!sessionStorage.getItem(key)) sessionStorage.setItem(key,String(i+1));
-      });
-      // Update after 60s so changes can be detected on next visit
-      const t=setTimeout(()=>{sorted.forEach((u,i)=>sessionStorage.setItem("bolao_prev_rank_"+u.uid,String(i+1)));},60000);
-      return()=>clearTimeout(t);
-    },[allUsers.length,matches.length,koMatches.length]);
+
 
     return(
       <div className="min-h-screen bg-gray-50">
