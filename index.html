@@ -315,8 +315,8 @@
             <div className="mt-4 pt-4 border-t border-gray-100">
               <p className="text-xs font-bold text-purple-600 mb-3">⚙️ Controles do Admin</p>
               <div className="grid grid-cols-2 gap-2 mb-2">
-                <div><label className="text-xs text-gray-500">Time 1</label><input value={eT1} onChange={e=>setET1(e.target.value)} onBlur={()=>eT1.trim()&&eT1!==m.team1&&onSaveKO(m.id,{team1:eT1.trim()})} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"/></div>
-                <div><label className="text-xs text-gray-500">Time 2</label><input value={eT2} onChange={e=>setET2(e.target.value)} onBlur={()=>eT2.trim()&&eT2!==m.team2&&onSaveKO(m.id,{team2:eT2.trim()})} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"/></div>
+                <div><label className="text-xs text-gray-500">Time 1</label><select value={eT1} onChange={e=>{setET1(e.target.value);if(e.target.value)onSaveKO(m.id,{team1:e.target.value});}} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"><option value="">Selecione o time...</option>{Object.entries(T).sort((a,b)=>a[1].localeCompare(b[1],'pt')).map(([en,pt])=><option key={en} value={en}>{pt}</option>)}</select></div>
+                <div><label className="text-xs text-gray-500">Time 2</label><select value={eT2} onChange={e=>{setET2(e.target.value);if(e.target.value)onSaveKO(m.id,{team2:e.target.value});}} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"><option value="">Selecione o time...</option>{Object.entries(T).sort((a,b)=>a[1].localeCompare(b[1],'pt')).map(([en,pt])=><option key={en} value={en}>{pt}</option>)}</select></div>
               </div>
               <div className="mb-2"><label className="text-xs text-gray-500">Kickoff (São Paulo, ISO)</label><input value={aKick} onChange={e=>setAKick(e.target.value)} onBlur={()=>onSaveKO(m.id,{kickoff:aKick||null})} placeholder="2026-06-28T16:00:00-03:00" className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"/></div>
               <div className="grid grid-cols-2 gap-2 mb-3">
@@ -344,7 +344,7 @@
       <div>
         <h2 className="text-lg font-bold text-gray-900 mb-1">🏆 Mata-Mata</h2>
         <p className="text-xs text-gray-400 mb-3">Role para o lado para ver todas as fases → · Toque em um jogo para apostar</p>
-        <div className="bk-scroll rounded-2xl" style={{background:'#0f172a',padding:'12px 12px 16px'}}>
+        <div className="bk-scroll rounded-2xl border border-gray-200" style={{background:'#ffffff',padding:'12px 12px 16px'}}>
           <div style={{display:'flex',alignItems:'flex-start',gap:0}}>
             {mainPhases.map((phase,pi)=>{
               const pMatches=byPhase[phase.id]||[];
@@ -352,7 +352,7 @@
               return(
                 <React.Fragment key={phase.id}>
                   <div style={{flexShrink:0,width:BK.cardW}}>
-                    <div className="text-center text-xs font-bold text-emerald-400 mb-2 py-1.5 rounded" style={{background:'rgba(255,255,255,0.08)'}}>{phase.label}</div>
+                    <div className="text-center text-xs font-bold text-gray-600 mb-2 py-1.5 rounded" style={{background:'rgba(0,0,0,0.05)'}}>{phase.label}</div>
                     <div style={{position:'relative',height:BK.totalH}}>
                       {pMatches.map((m,i)=>{
                         const koBet=(profile.koBets||{})[m.id];
@@ -360,7 +360,7 @@
                         const pts=koPoints(koBet,m);
                         return(
                           <div key={m.id} style={{position:'absolute',top:layout.firstTop+i*layout.stride,width:BK.cardW}} onClick={()=>setOpenId(m.id)}>
-                            <div className={`rounded-xl overflow-hidden cursor-pointer border-2 relative ${m.result?'bg-white border-emerald-400':cEdit?'bg-white border-yellow-300':m.team1&&m.team2?'bg-gray-100 border-gray-300':'bg-gray-800 border-gray-600'}`} style={{height:BK.cardH}}>
+                            <div className={`rounded-xl overflow-hidden cursor-pointer border-2 relative ${m.result?'bg-white border-emerald-400':cEdit?'bg-white border-yellow-300':m.team1&&m.team2?'bg-gray-100 border-gray-300':'bg-gray-50 border-gray-200'}`} style={{height:BK.cardH}}>
                               <div className={`flex items-center px-2 gap-1.5 border-b border-gray-100 ${m.winner==='team1'?'bg-emerald-50':''}`} style={{height:BK.cardH/2}}>
                                 <Flag name={m.team1} size="sm"/>
                                 <span className={`text-xs font-semibold flex-1 truncate ${m.team1?'text-gray-800':'text-gray-400'}`}>{tname(m.team1||'?')}</span>
