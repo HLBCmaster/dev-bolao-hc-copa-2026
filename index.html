@@ -39,10 +39,6 @@
   const PTS_EXATO=15, PTS_RESULTADO=10;
   const PRED_PTS={champion:50,vicechampion:30,third:20,topscorer:25,bestplayer:40};
   const PRED_LABELS=[{key:"champion",label:"🏆 Campeão"},{key:"vicechampion",label:"🥈 Vice-campeão"},{key:"third",label:"🥉 Terceiro lugar"},{key:"topscorer",label:"⚽ Artilheiro"},{key:"bestplayer",label:"🌟 Melhor Jogador"}];
-  const TOTAL_MATCHES=104; // 72 grupo + 32 mata-mata
-
-  // ── GA EVENT TRACKING ──
-  const gaEvent=(eventName,params)=>{if(typeof gtag==='function')gtag('event',eventName,params||{});};
 
   // ── KO CONSTANTS ──
   const KO_PHASES=[
@@ -53,7 +49,7 @@
     {id:'f',  label:'Final',   slots:1, pi:4},
     {id:'tp', label:'3º Lugar',slots:1, pi:-1},
   ];
-  const BK={cardH:72,cardW:190,connW:22,strideBase:80};
+  const BK={cardH:68,cardW:180,connW:22,strideBase:76};
   BK.totalH=16*BK.strideBase-8;
   const bkLayout=pi=>{const stride=BK.strideBase*Math.pow(2,pi);return{stride,firstTop:Math.round(stride/2-BK.cardH/2)};};
   const KO_SEED=[];
@@ -162,13 +158,13 @@
   function betPoints(g,r){if(!g||!r)return 0;if(g.trim()===r.trim())return PTS_EXATO;const a=outcome(g),b=outcome(r);return a&&b&&a===b?PTS_RESULTADO:0;}
   function koPoints(koBet,m){
     if(!m)return 0; let pts=0;
-    if(m.result&&(koBet&&koBet.guess)){if(koBet.guess.trim()===m.result.trim())pts+=15;else{const a=outcome(koBet.guess),b=outcome(m.result);if(a&&b&&a===b)pts+=10;}}
-    if(m.winner&&(koBet&&koBet.pick)&&koBet.pick===m.winner)pts+=10;
+    if(m.result&&koBet?.guess){if(koBet.guess.trim()===m.result.trim())pts+=15;else{const a=outcome(koBet.guess),b=outcome(m.result);if(a&&b&&a===b)pts+=10;}}
+    if(m.winner&&koBet?.pick&&koBet.pick===m.winner)pts+=10;
     return pts;
   }
   function userTotal(u,matches,koMatches,official){
     let t=0;
-    matches.forEach(m=>{if(m.result)t+=betPoints(((u.bets||{})[m.id]&&(u.bets||{})[m.id].guess),m.result);});
+    matches.forEach(m=>{if(m.result)t+=betPoints((u.bets||{})[m.id]?.guess,m.result);});
     (koMatches||[]).forEach(m=>{t+=koPoints((u.koBets||{})[m.id],m);});
     if(official)PRED_LABELS.forEach(p=>{const ans=norm(official[p.key]),g=norm((u.predictions||{})[p.key]);if(ans&&g&&ans===g)t+=PRED_PTS[p.key];});
     return t;
@@ -188,48 +184,62 @@
     const betsCount=Object.values(u.bets||{}).filter(b=>b&&b.guess).length;
     const finals=matches.filter(m=>m.result);
     let exact=0,result=0,streak=0,maxStreak=0;
-    finals.forEach(m=>{const p=betPoints(((u.bets||{})[m.id]&&(u.bets||{})[m.id].guess),m.result);if(p===PTS_EXATO)exact++;else if(p===PTS_RESULTADO)result++;if(p>0){streak++;maxStreak=Math.max(maxStreak,streak);}else streak=0;});
+    finals.forEach(m=>{const p=betPoints((u.bets||{})[m.id]?.guess,m.result);if(p===PTS_EXATO)exact++;else if(p===PTS_RESULTADO)result++;if(p>0){streak++;maxStreak=Math.max(maxStreak,streak);}else streak=0;});
     return{betsCount,exact,result,maxStreak};
   }
-
-  // ── BADGE LEVEL COLORS ──
+  // Level badge colors
   const LEVEL_COLORS=[
-    {bg:"#f3f4f6",text:"#6b7280",border:"#e5e7eb"},   // nv 0 (sem level / padrão)
-    {bg:"#dbeafe",text:"#1d4ed8",border:"#93c5fd"},   // nv 1 azul
-    {bg:"#d1fae5",text:"#065f46",border:"#6ee7b7"},   // nv 2 verde
-    {bg:"#fef3c7",text:"#92400e",border:"#fcd34d"},   // nv 3 dourado
-    {bg:"#ede9fe",text:"#5b21b6",border:"#c4b5fd"},   // nv 4 roxo
-    {bg:"#fee2e2",text:"#991b1b",border:"#fca5a5"},   // nv 5 vermelho
+    {bg:"#e5e7eb",text:"#6b7280"},  // Nv.0 (unearned)
+    {bg:"#bbf7d0",text:"#15803d"},  // Nv.1 verde
+    {bg:"#bfdbfe",text:"#1d4ed8"},  // Nv.2 azul
+    {bg:"#fde68a",text:"#b45309"},  // Nv.3 ouro
+    {bg:"#fecdd3",text:"#be123c"},  // Nv.4 rubi
+    {bg:"#e9d5ff",text:"#7e22ce"},  // Nv.5 violeta
   ];
-  const lvlColor=n=>LEVEL_COLORS[Math.min(n,LEVEL_COLORS.length-1)];
+  function getLevelColor(level){return LEVEL_COLORS[Math.min(level,LEVEL_COLORS.length-1)];}
 
   function getBadges(u,matches,koMatches,official,rankIndex){
     const s=userStats(u,matches);const pts=userTotal(u,matches,koMatches||[],official);
-    const koBets=Object.values(u.koBets||{}).filter(b=>b&&b.guess).length;
-    const koExact=(koMatches||[]).filter(m=>m.result&&((u.koBets||{})[m.id]&&(u.koBets||{})[m.id].guess)===m.result).length;
-    const koAdvance=(koMatches||[]).filter(m=>m.winner&&((u.koBets||{})[m.id]&&(u.koBets||{})[m.id].pick)===m.winner).length;
-    const an=Math.floor(s.betsCount/10);
-    const pn=Math.floor(s.result/10);
-    const kon=Math.floor(koBets/5);
+    const an=Math.floor(s.betsCount/10),pn=Math.floor(s.result/10);
+    // KO stats
+    const koFinished=(koMatches||[]).filter(m=>m.result);
+    let koExact=0,koAdvance=0,koLaser=0,koBetCount=0;
+    koFinished.forEach(m=>{
+      const kb=(u.koBets||{})[m.id];
+      if(!kb?.guess)return;
+      koBetCount++;
+      const scoreOk=kb.guess.trim()===m.result.trim();
+      const resultOk=scoreOk||outcome(kb.guess)===outcome(m.result);
+      const advanceOk=m.winner&&kb.pick===m.winner;
+      if(scoreOk)koExact++;
+      if(advanceOk)koAdvance++;
+      if((scoreOk||resultOk)&&advanceOk)koLaser++;
+    });
+    // pred acertos
+    let predHits=0;
+    if(official)PRED_LABELS.forEach(p=>{const ans=norm(official[p.key]),g=norm((u.predictions||{})[p.key]);if(ans&&g&&ans===g)predHits++;});
+    const acLC=getLevelColor(an),pnLC=getLevelColor(pn);
     return[
-      // Fase de grupos
-      {icon:"✅",name:"Presente",desc:"Fez sua 1ª aposta",earned:s.betsCount>=1,prog:`${Math.min(s.betsCount,1)}/1`,lvl:0,cat:"Geral"},
-      {icon:"🎟️",name:an>0?`Apostador Nv.${an}`:"Apostador",desc:"1 conquista a cada 10 apostas na fase de grupos",earned:s.betsCount>=10,prog:`${s.betsCount%10||10}/10`,lvl:an,cat:"Geral"},
-      {icon:"🎯",name:"Cravou!",desc:"Acertou o 1º placar exato",earned:s.exact>=1,prog:`${Math.min(s.exact,1)}/1`,lvl:0,cat:"Precisão"},
-      {icon:"🎳",name:"Franco-atirador",desc:"5 placares exatos na fase de grupos",earned:s.exact>=5,prog:`${Math.min(s.exact,5)}/5`,lvl:0,cat:"Precisão"},
-      {icon:"📌",name:pn>0?`Palpiteiro Nv.${pn}`:"Palpiteiro",desc:"1 conquista a cada 10 resultados certos (sem placar exato)",earned:s.result>=10,prog:`${s.result%10||10}/10`,lvl:pn,cat:"Palpites"},
-      {icon:"🔥",name:"Em sequência",desc:"Pontuou em 3 jogos seguidos",earned:s.maxStreak>=3,prog:`${Math.min(s.maxStreak,3)}/3`,lvl:0,cat:"Geral"},
-      // Mata-mata
-      {icon:"⚔️",name:kon>0?`Mateiro Nv.${kon}`:"Mateiro",desc:"Apostou em 5 jogos do mata-mata",earned:koBets>=5,prog:`${koBets%5||5}/5`,lvl:kon,cat:"Mata-mata"},
-      {icon:"🏹",name:"Sniper do Mata-Mata",desc:"Acertou 3 placares exatos no mata-mata",earned:koExact>=3,prog:`${Math.min(koExact,3)}/3`,lvl:0,cat:"Mata-mata"},
-      {icon:"🔮",name:"Vidente",desc:"Acertou 5 classificados no mata-mata",earned:koAdvance>=5,prog:`${Math.min(koAdvance,5)}/5`,lvl:0,cat:"Mata-mata"},
-      // Previsões / pontos
-      {icon:"🌟",name:"Visionário",desc:"Enviou as previsões finais antes do prazo",earned:!!u.predSubmitted,prog:u.predSubmitted?"feito":"pendente",lvl:0,cat:"Previsões"},
-      {icon:"📈",name:"Pontão",desc:"Passou de 100 pontos no total",earned:pts>=100,prog:`${Math.min(pts,100)}/100`,lvl:0,cat:"Pontos"},
-      {icon:"💎",name:"Centurião",desc:"Passou de 200 pontos no total",earned:pts>=200,prog:`${Math.min(pts,200)}/200`,lvl:0,cat:"Pontos"},
-      {icon:"🥇",name:"Pódio",desc:"Está no Top 3 do ranking",earned:pts>0&&rankIndex>=0&&rankIndex<3,prog:rankIndex>=0?`${rankIndex+1}º`:"—",lvl:0,cat:"Ranking"},
-      {icon:"👑",name:"Líder",desc:"Está em 1º no ranking",earned:pts>0&&rankIndex===0,prog:rankIndex>=0?`${rankIndex+1}º`:"—",lvl:0,cat:"Ranking"},
-      {icon:"🏆",name:"Lenda da Copa",desc:"Top 1 e mais de 150 pts",earned:pts>=150&&rankIndex===0,prog:rankIndex>=0?`${rankIndex+1}º · ${pts}pts`:"—",lvl:0,cat:"Ranking"},
+      // ── Fase de grupos ──
+      {icon:"✅",name:"Presente",desc:"Fez sua 1ª aposta",earned:s.betsCount>=1,prog:`${Math.min(s.betsCount,1)}/1`,lvl:0},
+      {icon:"🎟️",name:an>0?`Apostador Nv.${an}`:"Apostador",desc:"1 nível a cada 10 apostas",earned:s.betsCount>=10,prog:`${s.betsCount%10||10}/10`,lvl:an,lvlColor:acLC},
+      {icon:"🎯",name:"Cravou!",desc:"Acertou o 1º placar exato",earned:s.exact>=1,prog:`${Math.min(s.exact,1)}/1`,lvl:0},
+      {icon:"🎯🥇",name:"Franco-atirador",desc:"5 placares exatos na fase de grupos",earned:s.exact>=5,prog:`${Math.min(s.exact,5)}/5`,lvl:0,golden:true},
+      {icon:"📌",name:pn>0?`Palpiteiro Nv.${pn}`:"Palpiteiro",desc:"1 nível a cada 10 resultados certos",earned:s.result>=10,prog:`${s.result%10||10}/10`,lvl:pn,lvlColor:pnLC},
+      {icon:"🔥",name:"Em sequência",desc:"Pontuou em 3 jogos seguidos",earned:s.maxStreak>=3,prog:`${Math.min(s.maxStreak,3)}/3`,lvl:0},
+      // ── Mata-mata ──
+      {icon:"🥅",name:"Mata-mateiro",desc:"Fez sua 1ª aposta no mata-mata",earned:koBetCount>=1,prog:`${Math.min(koBetCount,1)}/1`,lvl:0},
+      {icon:"🎯",name:"Sniper",desc:"Acertou um placar exato no mata-mata",earned:koExact>=1,prog:`${Math.min(koExact,1)}/1`,lvl:0},
+      {icon:"🔮",name:"Vidente",desc:"Acertou quem avança em 5 jogos do mata-mata",earned:koAdvance>=5,prog:`${Math.min(koAdvance,5)}/5`,lvl:0},
+      {icon:"⚡",name:"Raio Laser",desc:"Acertou placar exato + quem avança num jogo",earned:koLaser>=1,prog:`${Math.min(koLaser,1)}/1`,lvl:0},
+      // ── Previsões ──
+      {icon:"🌟",name:"Visionário",desc:"Enviou as previsões finais",earned:!!u.predSubmitted,prog:u.predSubmitted?"feito":"pendente",lvl:0},
+      {icon:"🏆",name:"Profeta",desc:"Acertou o campeão nas previsões",earned:predHits>0&&!!official?.champion&&norm(official.champion)===norm((u.predictions||{}).champion),prog:predHits>0?"acertou":"pendente",lvl:0},
+      {icon:"🥇",name:"Pódio Final",desc:"Acertou os 3 primeiros lugares",earned:predHits>=3&&['champion','vicechampion','third'].every(k=>official?.[k]&&norm(official[k])===norm((u.predictions||{})[k])),prog:`${['champion','vicechampion','third'].filter(k=>official?.[k]&&norm(official[k])===norm((u.predictions||{})[k])).length}/3`,lvl:0},
+      // ── Ranking ──
+      {icon:"📈",name:"Pontão",desc:"Passou de 100 pontos",earned:pts>=100,prog:`${Math.min(pts,100)}/100`,lvl:0},
+      {icon:"🥇",name:"Pódio",desc:"Está no Top 3",earned:pts>0&&rankIndex>=0&&rankIndex<3,prog:rankIndex>=0?`${rankIndex+1}º`:"—",lvl:0},
+      {icon:"👑",name:"Líder",desc:"Está em 1º no ranking",earned:pts>0&&rankIndex===0,prog:rankIndex>=0?`${rankIndex+1}º`:"—",lvl:0},
     ];
   }
 
@@ -283,36 +293,36 @@
 
   // ── KO MODAL ──
   function KOModal({m,koBet,canEdit,isAdmin,onBet,onSaveKO,onClose}){
-    const[g1,setG1]=useState(koBet&&koBet.guess?koBet.guess.split('-')[0]:'');
-    const[g2,setG2]=useState(koBet&&koBet.guess?koBet.guess.split('-')[1]:'');
-    const[pick,setPick]=useState((koBet&&koBet.pick)||'');
+    const[g1,setG1]=useState(koBet?.guess?.split('-')[0]||'');
+    const[g2,setG2]=useState(koBet?.guess?.split('-')[1]||'');
+    const[pick,setPick]=useState(koBet?.pick||'');
     const[aRes,setARes]=useState(m.result||'');
     const[aWin,setAWin]=useState(m.winner||'');
+    // Admin date/time fields
+    const kickIso=m.kickoff||'';
+    const kickDate=kickIso?new Date(kickIso).toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'}):'';
+    const kickTime=kickIso?new Date(kickIso).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'}):'';
+    const[aDate,setADate]=useState(kickDate);
+    const[aTime,setATime]=useState(kickTime);
     const[eT1,setET1]=useState(m.team1||'');
     const[eT2,setET2]=useState(m.team2||'');
-    // Admin: kickoff split into date + time
-    const kickDate=m.kickoff?m.kickoff.substring(0,10):'';
-    const kickTimeVal=m.kickoff?m.kickoff.substring(11,16):'';
-    const[aKickDate,setAKickDate]=useState(kickDate);
-    const[aKickTime,setAKickTime]=useState(kickTimeVal);
     const phase=KO_PHASES.find(p=>p.id===m.phase);
     const t1=m.team1||'Time 1', t2=m.team2||'Time 2';
     const pts=koPoints(koBet,m);
 
-    // Auto-select winner when score is entered and result is decisive
-    const handleG1Change=v=>{setG1(v);if(v!==''&&g2!==''){const n1=parseInt(v,10),n2=parseInt(g2,10);if(!isNaN(n1)&&!isNaN(n2)){if(n1>n2)setPick('team1');else if(n2>n1)setPick('team2');}}};
-    const handleG2Change=v=>{setG2(v);if(g1!==''&&v!==''){const n1=parseInt(g1,10),n2=parseInt(v,10);if(!isNaN(n1)&&!isNaN(n2)){if(n1>n2)setPick('team1');else if(n2>n1)setPick('team2');}}};
+    // Auto-select pick when score is not a draw
+    const handleG1=v=>{setG1(v);if(v!==''&&g2!==''){const n1=parseInt(v,10),n2=parseInt(g2,10);if(!isNaN(n1)&&!isNaN(n2)&&n1!==n2){setPick(n1>n2?'team1':'team2');}}};
+    const handleG2=v=>{setG2(v);if(g1!==''&&v!==''){const n1=parseInt(g1,10),n2=parseInt(v,10);if(!isNaN(n1)&&!isNaN(n2)&&n1!==n2){setPick(n1>n2?'team1':'team2');}}};
 
-    const buildKickoffISO=()=>{if(!aKickDate||!aKickTime)return null;return`${aKickDate}T${aKickTime}:00-03:00`;};
-    const saveKickoff=()=>{const iso=buildKickoffISO();onSaveKO(m.id,{kickoff:iso});};
+    const buildKickoffISO=()=>{if(!aDate||!aTime)return null;try{const[hh,mm]=aTime.split(':');const d=new Date(`${aDate}T${hh.padStart(2,'0')}:${mm.padStart(2,'0')}:00-03:00`);return isNaN(d)?null:d.toISOString();}catch{return null;}};
 
     return(
       <div className="fixed inset-0 bg-black/60 z-50 flex items-end" onClick={onClose}>
         <div className="bg-white rounded-t-2xl w-full max-w-lg mx-auto p-5 pb-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
           <div className="flex justify-between items-start mb-3">
             <div>
-              <p className="font-bold text-gray-800 text-base">{phase&&label} — Jogo {m.slot}</p>
-              {m.kickoff&&<p className="text-xs text-gray-400 mt-0.5">📅 {fmtDate(m.kickoff)} às {fmtTime(m.kickoff)} (SP)</p>}
+              <p className="font-bold text-gray-800 text-base">{phase?.label} — Jogo {m.slot}</p>
+              {m.kickoff&&<p className="text-xs text-gray-400 mt-0.5">{fmtDate(m.kickoff)} às {fmtTime(m.kickoff)} (SP)</p>}
             </div>
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 font-bold shrink-0">✕</button>
           </div>
@@ -328,16 +338,16 @@
                 <div className="flex items-center gap-2 flex-1"><Flag name={m.team2}/><span className={`font-bold text-sm ${m.winner==='team2'?'text-emerald-600':'text-gray-700'}`}>{tname(t2)}</span></div>
               </div>
               {m.winner&&<p className="text-center text-sm font-semibold text-emerald-600 mb-3">🏆 Classificado: {tname(m[m.winner]||'')}</p>}
-              {(koBet&&koBet.guess)&&<div className="bg-gray-50 rounded-xl p-3 text-sm"><p>Sua aposta: <b>{koBet.guess}</b> · Avança: <b>{tname(m[koBet.pick]||koBet.pick||'')}</b></p>{pts>0?<p className="text-emerald-600 font-bold mt-1">+{pts} pontos! 🎉</p>:<p className="text-red-400 mt-1">Sem pontos desta vez.</p>}</div>}
+              {koBet?.guess&&<div className="bg-gray-50 rounded-xl p-3 text-sm"><p>Sua aposta: <b>{koBet.guess}</b> · Avança: <b>{tname(m[koBet.pick]||koBet.pick||'')}</b></p>{pts>0?<p className="text-emerald-600 font-bold mt-1">+{pts} pontos! 🎉</p>:<p className="text-red-400 mt-1">Sem pontos desta vez.</p>}</div>}
             </div>
           ):canEdit?(
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="flex items-center gap-2 flex-1 justify-end"><span className="font-semibold text-sm text-right leading-tight">{tname(t1)}</span><Flag name={m.team1}/></div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <div className="w-10 h-10 rounded-xl border-2 border-gray-200 focus-within:border-emerald-400 flex items-center justify-center"><input type="number" min="0" max="20" value={g1} onChange={e=>handleG1Change(e.target.value)} className="w-full h-full text-center font-bold text-lg bg-transparent focus:outline-none"/></div>
+                  <div className="w-10 h-10 rounded-xl border-2 border-gray-200 focus-within:border-emerald-400 flex items-center justify-center"><input type="number" min="0" max="20" value={g1} onChange={e=>handleG1(e.target.value)} className="w-full h-full text-center font-bold text-lg bg-transparent focus:outline-none"/></div>
                   <span className="text-gray-400 font-bold">×</span>
-                  <div className="w-10 h-10 rounded-xl border-2 border-gray-200 focus-within:border-emerald-400 flex items-center justify-center"><input type="number" min="0" max="20" value={g2} onChange={e=>handleG2Change(e.target.value)} className="w-full h-full text-center font-bold text-lg bg-transparent focus:outline-none"/></div>
+                  <div className="w-10 h-10 rounded-xl border-2 border-gray-200 focus-within:border-emerald-400 flex items-center justify-center"><input type="number" min="0" max="20" value={g2} onChange={e=>handleG2(e.target.value)} className="w-full h-full text-center font-bold text-lg bg-transparent focus:outline-none"/></div>
                 </div>
                 <div className="flex items-center gap-2 flex-1"><Flag name={m.team2}/><span className="font-semibold text-sm leading-tight">{tname(t2)}</span></div>
               </div>
@@ -346,13 +356,13 @@
                 <button onClick={()=>setPick('team1')} className={`flex-1 py-2.5 px-2 rounded-xl border-2 font-semibold text-xs flex items-center justify-center gap-1.5 transition ${pick==='team1'?'border-emerald-500 bg-emerald-50 text-emerald-700':'border-gray-200 text-gray-600'}`}><Flag name={m.team1} size="sm"/> {tname(t1)}</button>
                 <button onClick={()=>setPick('team2')} className={`flex-1 py-2.5 px-2 rounded-xl border-2 font-semibold text-xs flex items-center justify-center gap-1.5 transition ${pick==='team2'?'border-emerald-500 bg-emerald-50 text-emerald-700':'border-gray-200 text-gray-600'}`}><Flag name={m.team2} size="sm"/> {tname(t2)}</button>
               </div>
-              <button onClick={()=>{if(g1!==''&&g2!==''&&pick){onBet(g1,g2,pick);onClose();}}} disabled={g1===''||g2===''||!pick} className={`w-full py-3 rounded-xl font-bold text-white disabled:bg-gray-200 disabled:text-gray-400 transition ${(koBet&&koBet.guess)?'bg-red-500 hover:bg-red-600':'bg-emerald-500 hover:bg-emerald-600'}`}>{(koBet&&koBet.guess)?'Alterar aposta':'Enviar aposta'}</button>
-              {(koBet&&koBet.guess)&&<p className="text-xs text-center text-gray-400 mt-2">Atual: {koBet.guess} · {tname(m[koBet.pick]||'')} avança</p>}
+              <button onClick={()=>{if(g1!==''&&g2!==''&&pick){onBet(g1,g2,pick);onClose();}}} disabled={g1===''||g2===''||!pick} className={`w-full py-3 rounded-xl font-bold text-white disabled:bg-gray-200 disabled:text-gray-400 transition ${koBet?.guess?'bg-red-500 hover:bg-red-600':'bg-emerald-500 hover:bg-emerald-600'}`}>{koBet?.guess?'Alterar aposta':'Enviar aposta'}</button>
+              {koBet?.guess&&<p className="text-xs text-center text-gray-400 mt-2">Atual: {koBet.guess} · {tname(m[koBet.pick]||'')} avança</p>}
             </div>
           ):(
             <div>
               <div className="flex items-center justify-center gap-4 mb-3"><div className="text-center"><Flag name={m.team1}/><p className="text-xs font-semibold mt-1">{tname(t1)}</p></div><span className="text-2xl font-bold text-gray-300">×</span><div className="text-center"><Flag name={m.team2}/><p className="text-xs font-semibold mt-1">{tname(t2)}</p></div></div>
-              {(koBet&&koBet.guess)?(<div className="bg-orange-50 rounded-xl p-3 text-sm text-center"><p>Sua aposta: <b>{koBet.guess}</b> · Avança: <b>{tname(m[koBet.pick]||koBet.pick||'')}</b></p><p className="text-orange-500 text-xs mt-1">{koBet.changes>=1?'🔒 Alteração já utilizada':'🔒 Apostas fechadas'}</p></div>):(<p className="text-center text-gray-400 text-sm">{!m.team1||!m.team2?'Times ainda não definidos.':'Apostas encerradas.'}</p>)}
+              {koBet?.guess?(<div className="bg-orange-50 rounded-xl p-3 text-sm text-center"><p>Sua aposta: <b>{koBet.guess}</b> · Avança: <b>{tname(m[koBet.pick]||koBet.pick||'')}</b></p><p className="text-orange-500 text-xs mt-1">{koBet.changes>=1?'🔒 Alteração já utilizada':'🔒 Apostas fechadas'}</p></div>):(<p className="text-center text-gray-400 text-sm">{!m.team1||!m.team2?'Times ainda não definidos.':'Apostas encerradas.'}</p>)}
             </div>
           )}
           {isAdmin&&(
@@ -364,11 +374,11 @@
               </div>
               <div className="mb-2">
                 <label className="text-xs text-gray-500">Data e hora do jogo (SP)</label>
-                <div className="grid grid-cols-2 gap-2 mt-0.5">
-                  <input type="date" value={aKickDate} onChange={e=>setAKickDate(e.target.value)} onBlur={saveKickoff} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400"/>
-                  <input type="time" value={aKickTime} onChange={e=>setAKickTime(e.target.value)} onBlur={saveKickoff} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400"/>
+                <div className="flex gap-2 mt-0.5">
+                  <input type="date" value={aDate} onChange={e=>setADate(e.target.value)} className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400"/>
+                  <input type="text" value={aTime} onChange={e=>setATime(e.target.value)} placeholder="HH:MM" maxLength={5} className="w-20 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 text-center"/>
+                  <button onClick={()=>{const iso=buildKickoffISO();if(iso)onSaveKO(m.id,{kickoff:iso});}} className="bg-purple-500 hover:bg-purple-600 text-white text-xs px-3 rounded-lg font-medium">💾</button>
                 </div>
-                <p className="text-xs text-gray-400 mt-0.5">Fuso: São Paulo (UTC-3)</p>
               </div>
               <div className="grid grid-cols-2 gap-2 mb-3">
                 <div><label className="text-xs text-gray-500">Resultado (90min)</label><input value={aRes} onChange={e=>setARes(e.target.value)} placeholder="2-1" className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-purple-400 mt-0.5"/></div>
@@ -388,21 +398,20 @@
     const byPhase={};
     KO_PHASES.forEach(p=>{byPhase[p.id]=koMatches.filter(m=>m.phase===p.id).sort((a,b)=>a.slot-b.slot);});
     const mainPhases=KO_PHASES.filter(p=>p.id!=='tp');
-    const tpMatch=byPhase['tp']&&[0];
+    const tpMatch=byPhase['tp']?.[0];
     const openM=openId?koMatches.find(m=>m.id===openId):null;
     if(koMatches.length===0) return(<div className="text-center py-16 text-gray-400"><div className="text-5xl mb-3">🏆</div><p className="font-medium">Mata-mata ainda não configurado.</p><p className="text-sm mt-1">O administrador configurará em breve!</p></div>);
     return(
       <div>
         <h2 className="text-lg font-bold text-gray-900 mb-1">🏆 Mata-Mata</h2>
-        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-3 text-xs text-emerald-800">
-          <p className="font-semibold mb-1">Role para o lado para ver todas as fases → · Toque em um jogo para apostar</p>
-          <p className="font-bold text-emerald-700 mb-1">📊 Como pontuar no mata-mata:</p>
-          <ul className="space-y-0.5 text-emerald-700">
-            <li>🎯 Placar exato + quem avança = <b>+25 pts</b> (ex: apostou 2-1 Brasil, acertou tudo)</li>
-            <li>📌 Resultado certo + quem avança = <b>+20 pts</b> (ex: apostou 2-0 Brasil, saiu 3-1 Brasil)</li>
-            <li>🏆 Apenas quem avança certo = <b>+10 pts</b> (placar ou vencedor errado, mas classificado certo)</li>
-            <li>🤝 Em empate: placar exato + quem avança = <b>+25 pts</b> · resultado X (empate) + quem avança = <b>+20 pts</b></li>
-          </ul>
+        <p className="text-xs text-gray-400 mb-2">Role para o lado para ver todas as fases → · Toque em um jogo para apostar</p>
+        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mb-3 text-xs text-gray-700 space-y-1">
+          <p className="font-bold text-emerald-700 mb-1">📊 Como pontuar no Mata-Mata</p>
+          <p>🏆 <b>Vitória + placar exato + quem avança:</b> 15 + 10 = <b className="text-emerald-600">25 pts</b></p>
+          <p>📌 <b>Vitória correta (sem placar exato) + quem avança:</b> 10 + 10 = <b className="text-emerald-600">20 pts</b></p>
+          <p>🤝 <b>Empate exato + quem avança certo:</b> 15 + 10 = <b className="text-emerald-600">25 pts</b></p>
+          <p>🤝 <b>Empate (sem exato) + quem avança certo:</b> 10 + 10 = <b className="text-emerald-600">20 pts</b></p>
+          <p className="text-gray-400 mt-1">Ao apostar vitória de um time, o "quem avança" é selecionado automaticamente.</p>
         </div>
         <div className="bk-scroll rounded-2xl border border-gray-200" style={{background:'#ffffff',padding:'12px 12px 16px'}}>
           <div style={{display:'flex',alignItems:'flex-start',gap:0}}>
@@ -420,23 +429,24 @@
                         const pts=koPoints(koBet,m);
                         return(
                           <div key={m.id} style={{position:'absolute',top:layout.firstTop+i*layout.stride,width:BK.cardW}} onClick={()=>setOpenId(m.id)}>
+                            {m.kickoff&&<p className="text-center text-gray-400 mb-0.5" style={{fontSize:'9px'}}>{fmtDate(m.kickoff)} {fmtTime(m.kickoff)}</p>}
                             <div className={`rounded-xl overflow-hidden cursor-pointer border-2 relative ${m.result?'bg-white border-emerald-400':cEdit?'bg-white border-yellow-300':m.team1&&m.team2?'bg-gray-100 border-gray-300':'bg-gray-50 border-gray-200'}`} style={{height:BK.cardH}}>
-                              {m.kickoff&&<div className="absolute top-0 left-0 right-0 text-center" style={{fontSize:'9px',color:'#6b7280',background:'rgba(0,0,0,0.04)',lineHeight:'14px',paddingTop:'1px'}}>{fmtDate(m.kickoff)} {fmtTime(m.kickoff)}</div>}
-                              <div className={`flex items-center px-2 gap-1.5 border-b border-gray-100 ${m.winner==='team1'?'bg-emerald-50':''}`} style={{height:(BK.cardH-14)/2,marginTop:m.kickoff?14:0}}>
+                              <div className={`flex items-center px-2 gap-1.5 border-b border-gray-100 ${m.winner==='team1'?'bg-emerald-50':''}`} style={{height:BK.cardH/2}}>
                                 <Flag name={m.team1} size="sm"/>
-                                <span className={`text-xs font-semibold flex-1 truncate ${m.team1?'text-gray-800':'text-gray-400'}`}>{tname(m.team1||'?')}</span>
-                                {m.result&&<span className={`text-xs font-bold w-4 text-right shrink-0 ${m.winner==='team1'?'text-emerald-600':'text-gray-500'}`}>{m.result.split('-')[0]}</span>}
-                                {(koBet&&koBet.guess)&&!m.result&&<span className="text-xs font-bold text-yellow-600 shrink-0 w-4 text-right">{koBet.guess.split('-')[0]}</span>}
+                                <span className={`text-xs font-semibold flex-1 truncate ${m.team1?'text-gray-800':'text-gray-400'}`} style={{fontSize:'11px'}}>{tname(m.team1||'?')}</span>
+                                {m.result&&<span className={`font-bold w-4 text-right shrink-0 ${m.winner==='team1'?'text-emerald-600':'text-gray-500'}`} style={{fontSize:'11px'}}>{m.result.split('-')[0]}</span>}
+                                {!m.result&&koBet?.guess&&<span className="text-gray-400 shrink-0 font-bold" style={{fontSize:'10px'}}>{koBet.guess.split('-')[0]}</span>}
                                 {m.winner==='team1'&&<span className="text-emerald-500 text-xs ml-0.5 shrink-0">▶</span>}
                               </div>
-                              <div className={`flex items-center px-2 gap-1.5 ${m.winner==='team2'?'bg-emerald-50':''}`} style={{height:(BK.cardH-14)/2}}>
+                              <div className={`flex items-center px-2 gap-1.5 ${m.winner==='team2'?'bg-emerald-50':''}`} style={{height:BK.cardH/2}}>
                                 <Flag name={m.team2} size="sm"/>
-                                <span className={`text-xs font-semibold flex-1 truncate ${m.team2?'text-gray-800':'text-gray-400'}`}>{tname(m.team2||'?')}</span>
-                                {m.result&&<span className={`text-xs font-bold w-4 text-right shrink-0 ${m.winner==='team2'?'text-emerald-600':'text-gray-500'}`}>{m.result.split('-')[1]}</span>}
-                                {(koBet&&koBet.guess)&&!m.result&&<span className="text-xs font-bold text-yellow-600 shrink-0 w-4 text-right">{koBet.guess.split('-')[1]}</span>}
+                                <span className={`text-xs font-semibold flex-1 truncate ${m.team2?'text-gray-800':'text-gray-400'}`} style={{fontSize:'11px'}}>{tname(m.team2||'?')}</span>
+                                {m.result&&<span className={`font-bold w-4 text-right shrink-0 ${m.winner==='team2'?'text-emerald-600':'text-gray-500'}`} style={{fontSize:'11px'}}>{m.result.split('-')[1]}</span>}
+                                {!m.result&&koBet?.guess&&<span className="text-gray-400 shrink-0 font-bold" style={{fontSize:'10px'}}>{koBet.guess.split('-')[1]}</span>}
                                 {m.winner==='team2'&&<span className="text-emerald-500 text-xs ml-0.5 shrink-0">▶</span>}
                               </div>
-                              {m.result&&pts>0&&<div className="absolute bottom-0 right-0 bg-emerald-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-tl-lg">+{pts}</div>}
+                              {koBet?.guess&&!m.result&&<div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-yellow-400"/>}
+                              {m.result&&pts>0&&<div className="absolute top-0 right-0 bg-emerald-500 text-white font-bold px-1.5 py-0.5 rounded-bl-lg" style={{fontSize:'10px'}}>+{pts}</div>}
                             </div>
                           </div>
                         );
@@ -495,21 +505,11 @@
       return()=>{u1();u2();u3();u4();};
     },[user,needName]);
 
-    // Save current ranks to sessionStorage (computed inline to avoid sorted dependency)
-    useEffect(()=>{
-      if(allUsers.length===0)return;
-      const sortedForRank=[...allUsers].map(u=>({uid:u.uid,pts:userTotal(u,matches,koMatches,official)})).sort((a,b)=>b.pts-a.pts);
-      sortedForRank.forEach((u,i)=>{
-        const key="bolao_prev_rank_"+u.uid;
-        if(!sessionStorage.getItem(key)) sessionStorage.setItem(key,String(i+1));
-      });
-      const t=setTimeout(()=>{sortedForRank.forEach((u,i)=>sessionStorage.setItem("bolao_prev_rank_"+u.uid,String(i+1)));},60000);
-      return()=>clearTimeout(t);
-    },[allUsers.length,matches.length,koMatches.length]);
-
     const login=async()=>{try{setLoginInProgress(true);await auth.signInWithPopup(provider);}catch(e){setLoginInProgress(false);setMsg("Erro no login: "+e.message);}};
     const logout=()=>auth.signOut();
     const saveName=async()=>{if(!nameInput.trim())return;try{const data={uid:user.uid,email:user.email,displayName:nameInput.trim(),bets:{},koBets:{},predictions:{},predChanges:{},predSubmitted:false,createdAt:Date.now()};await db.collection("users").doc(user.uid).set(data);setProfile(data);setNeedName(false);}catch(e){setMsg("Erro: "+e.message);}};
+    const seed=async()=>{setMsg("Semeando 72 jogos...");try{const batch=db.batch();SEED_MATCHES.forEach(m=>batch.set(db.collection("matches").doc(m.id),m));await batch.commit();setMsg("✅ 72 jogos cadastrados!");}catch(e){setMsg("Erro: "+e.message);}};
+    const seedKO=async()=>{setMsg("Semeando mata-mata...");try{const batch=db.batch();KO_SEED.forEach(m=>batch.set(db.collection("knockout").doc(m.id),m));await batch.commit();setMsg("✅ 32 jogos do mata-mata criados! Configure os times na aba Mata-Mata.");}catch(e){setMsg("Erro: "+e.message);}};
     const saveBet=async(m,g1str,g2str)=>{const g1=parseInt(g1str,10),g2=parseInt(g2str,10);if(isNaN(g1)||isNaN(g2))return;const val=`${g1}-${g2}`;const cur=(profile.bets||{})[m.id]||{guess:"",changes:0};if(val===cur.guess)return;try{const changes=cur.guess?cur.changes+1:0;const newBets={...(profile.bets||{}),[m.id]:{guess:val,changes}};await db.collection("users").doc(user.uid).update({bets:newBets});setProfile({...profile,bets:newBets});setMsg("✅ Aposta salva!");}catch(e){setMsg("Erro: "+e.message);}};
     const saveKoBet=async(matchId,g1str,g2str,pick)=>{const g1=parseInt(g1str,10),g2=parseInt(g2str,10);if(isNaN(g1)||isNaN(g2)||!pick)return;const val=`${g1}-${g2}`;const cur=(profile.koBets||{})[matchId]||{guess:'',pick:'',changes:0};if(val===cur.guess&&pick===cur.pick)return;const changes=cur.guess?cur.changes+1:0;const newKoBet={guess:val,pick,changes};try{await db.collection("users").doc(user.uid).update({[`koBets.${matchId}`]:newKoBet});setProfile({...profile,koBets:{...(profile.koBets||{}),[matchId]:newKoBet}});setMsg("✅ Aposta salva!");}catch(e){setMsg("Erro: "+e.message);}};
     const saveResult=async(m)=>{const val=(resultDrafts[m.id]||"").trim();try{await db.collection("matches").doc(m.id).update({result:val||null});setMsg("✅ Resultado salvo!");}catch(e){setMsg("Erro: "+e.message);}};
@@ -518,8 +518,6 @@
     const updatePred=(key,value)=>{if(deadlinePassed)return;if(profile.predSubmitted&&(profile.predChanges||{})[key]>=1)return;setProfile({...profile,predictions:{...(profile.predictions||{}),[key]:value}});};
     const submitPred=async()=>{if(deadlinePassed)return;try{const changes={...(profile.predChanges||{})};if(profile.predSubmitted)PRED_LABELS.forEach(p=>{changes[p.key]=Math.min(1,(changes[p.key]||0)+1);});const data={predictions:profile.predictions||{},predChanges:changes,predSubmitted:true};await db.collection("users").doc(user.uid).update(data);setProfile({...profile,...data});setMsg("✅ Previsões enviadas!");}catch(e){setMsg("Erro: "+e.message);}};
     const saveOfficial=async(key,value)=>{try{await db.collection("config").doc("official").set({...(official||{}),[key]:value},{merge:true});}catch(e){setMsg("Erro: "+e.message);}};
-
-    const changeTab=(id)=>{setTab(id);gaEvent('menu_click',{menu_item:id});};
 
     const shareRanking=(sorted)=>{
       const top=sorted.slice(0,10);const W=720,rowH=58,headH=230,footH=64,H=headH+top.length*rowH+footH;
@@ -565,26 +563,16 @@
     const myPts=userTotal(profile,matches,koMatches,official);
     const myRank=sorted.findIndex(u=>u.uid===user.uid)+1;
     const myBadges=getBadges(profile,matches,koMatches,official,myRank-1);
+    const totalMatchesCopa=matches.length+koMatches.length||104;
+    const myBetsTotal=Object.values(profile.bets||{}).filter(b=>b?.guess).length+Object.values(profile.koBets||{}).filter(b=>b?.guess).length;
     const groups=[...new Set(matches.map(m=>m.group))].sort();
     const teamOptions=[...new Set(matches.flatMap(m=>[m.team1,m.team2]))].map(tname).filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>a.localeCompare(b,"pt"));
     const ended=matches.filter(m=>m.result);
     const openMatches=matches.filter(m=>!m.result);
-    const totalBetsMade=Object.values(profile.bets||{}).filter(b=>b&&b.guess).length + Object.values(profile.koBets||{}).filter(b=>b&&b.guess).length;
-    // Tab order: Fase de Grupos first
     const tabs=[["placares","Fase de Grupos"],["ko","Mata-mata"],["grupos","Grupos"],["pred","Previsões"],["rank","Ranking"],["badges","Conquistas"],["acomp","Acomp."],["regras","Regras"]];
     if(isAdmin)tabs.push(["admin","Admin"]);
+    const setTabGA=id=>{setTab(id);if(window.gtag)window.gtag('event','menu_click',{event_category:'navigation',event_label:id});};
     const currentLabel=(tabs.find(t=>t[0]===tab)||["","Menu"])[1];
-
-    // Compute rank change indicators (compare to stored prev session)
-    const getRankDelta=(uid,curRank)=>{
-      const key="bolao_prev_rank_"+uid;
-      const prev=sessionStorage.getItem(key);
-      if(!prev)return null;
-      const prevNum=parseInt(prev,10);
-      if(isNaN(prevNum))return null;
-      return prevNum-curRank; // positive = went up
-    };
-
 
     return(
       <div className="min-h-screen bg-gray-50">
@@ -597,19 +585,19 @@
             <div className="mt-3 grid grid-cols-3 gap-2">
               <div className="bg-white/10 rounded-xl p-2 text-center"><p className="text-white font-bold text-lg">{myPts}</p><p className="text-emerald-300 text-xs">Seus pontos</p></div>
               <div className="bg-white/10 rounded-xl p-2 text-center"><p className="text-white font-bold text-lg">{myRank}º</p><p className="text-emerald-300 text-xs">Posição</p></div>
-              <div className="bg-white/10 rounded-xl p-2 text-center"><p className="text-white font-bold text-lg">{totalBetsMade}/{TOTAL_MATCHES}</p><p className="text-emerald-300 text-xs">Apostados</p></div>
+              <div className="bg-white/10 rounded-xl p-2 text-center"><p className="text-white font-bold text-lg">{myBetsTotal}/{totalMatchesCopa}</p><p className="text-emerald-300 text-xs">Apostados</p></div>
             </div>
           </div>
         </header>
 
         <nav className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
           <div className="max-w-3xl mx-auto px-3">
-            <div className="hidden md:flex overflow-x-auto">{tabs.map(([id,lbl])=><button key={id} onClick={()=>changeTab(id)} className={"px-4 py-3 text-sm font-semibold whitespace-nowrap transition "+(tab===id?"tab-active text-emerald-600":"text-gray-400 hover:text-gray-600")}>{lbl}</button>)}</div>
+            <div className="hidden md:flex overflow-x-auto">{tabs.map(([id,lbl])=><button key={id} onClick={()=>setTabGA(id)} className={"px-4 py-3 text-sm font-semibold whitespace-nowrap transition "+(tab===id?"tab-active text-emerald-600":"text-gray-400 hover:text-gray-600")}>{lbl}</button>)}</div>
             <div className="md:hidden flex items-center gap-3 py-3">
               <button onClick={()=>setMenuOpen(!menuOpen)} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
               <span className="font-bold text-gray-800 text-sm">{currentLabel}</span>
             </div>
-            {menuOpen&&<div className="md:hidden pb-3 grid grid-cols-2 gap-2">{tabs.map(([id,lbl])=><button key={id} onClick={()=>{changeTab(id);setMenuOpen(false);}} className={"px-3 py-2.5 rounded-xl text-sm font-semibold text-left transition "+(tab===id?"bg-emerald-500 text-white":"bg-gray-100 text-gray-600")}>{lbl}</button>)}</div>}
+            {menuOpen&&<div className="md:hidden pb-3 grid grid-cols-2 gap-2">{tabs.map(([id,lbl])=><button key={id} onClick={()=>{setTabGA(id);setMenuOpen(false);}} className={"px-3 py-2.5 rounded-xl text-sm font-semibold text-left transition "+(tab===id?"bg-emerald-500 text-white":"bg-gray-100 text-gray-600")}>{lbl}</button>)}</div>}
           </div>
         </nav>
 
@@ -679,26 +667,8 @@
             <div>
               <div className="flex justify-between items-center mb-4"><h2 className="text-lg font-bold text-gray-900">🏆 Ranking Geral</h2><button onClick={()=>shareRanking(sorted)} className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-3 py-2 rounded-xl transition"><svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>Compartilhar</button></div>
               <div className="space-y-2">{sorted.map((u,i)=>{
-                const earned=getBadges(u,matches,koMatches,official,i).filter(b=>b.earned);
-                const delta=getRankDelta(u.uid,i+1);
-                return(<div key={u.uid} className={"flex items-center justify-between rounded-2xl p-3 shadow-sm border "+(u.uid===user.uid?"bg-emerald-50 border-emerald-200":"bg-white border-gray-100")}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={"w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 "+(i===0?"bg-yellow-400 text-white":i===1?"bg-gray-300 text-gray-700":i===2?"bg-orange-400 text-white":"bg-gray-100 text-gray-500")}>{i+1}</div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-gray-800 text-sm truncate">{u.displayName}{u.uid===user.uid&&<span className="text-xs text-emerald-500 ml-1">(você)</span>}</p>
-                      {earned.length>0&&<p className="text-sm leading-none mt-0.5">{earned.slice(0,15).map((b,k)=><span key={k} title={b.name}>{b.icon}</span>)}</p>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-bold text-emerald-600 text-sm">{u.pts} pts</span>
-                    {delta!==null&&delta!==0&&(
-                      <span className={`flex items-center text-xs font-bold ${delta>0?'text-emerald-500':'text-red-400'}`}>
-                        {delta>0?'▲':'▼'}{Math.abs(delta)}
-                      </span>
-                    )}
-                    {delta===0&&<span className="text-gray-300 text-xs font-bold">—</span>}
-                  </div>
-                </div>);
+                const earned=getBadges(u,matches,koMatches,official,i).filter(b=>b.earned).slice(0,15);
+                return(<div key={u.uid} className={"flex items-center justify-between rounded-2xl p-3 shadow-sm border "+(u.uid===user.uid?"bg-emerald-50 border-emerald-200":"bg-white border-gray-100")}><div className="flex items-center gap-3 min-w-0"><div className={"w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 "+(i===0?"bg-yellow-400 text-white":i===1?"bg-gray-300 text-gray-700":i===2?"bg-orange-400 text-white":"bg-gray-100 text-gray-500")}>{i+1}</div><div className="min-w-0"><p className="font-semibold text-gray-800 text-sm truncate">{u.displayName}{u.uid===user.uid&&<span className="text-xs text-emerald-500 ml-1">(você)</span>}</p>{earned.length>0&&<p className="text-sm leading-none mt-0.5">{earned.map((b,k)=><span key={k} title={b.name}>{b.golden?'🎯🥇':b.icon}</span>)}</p>}</div></div><span className="font-bold text-emerald-600 text-sm shrink-0">{u.pts} pts</span></div>);
               })}</div>
             </div>
           )}
@@ -708,16 +678,37 @@
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-1">🏅 Suas Conquistas</h2>
               <p className="text-xs text-gray-400 mb-4">{myBadges.filter(b=>b.earned).length}/{myBadges.length} desbloqueadas</p>
-              <div className="grid grid-cols-2 gap-3">{myBadges.map((b,i)=>{
-                const lc=b.lvl>0?lvlColor(b.lvl):{bg:null,text:null,border:null};
-                return(<div key={i} style={b.earned&&b.lvl>0?{background:lc.bg,borderColor:lc.border,borderWidth:'1.5px',borderStyle:'solid'}:{}} className={(b.earned?(b.lvl>0?"rounded-2xl p-4 border text-center shadow-sm":"rounded-2xl p-4 border text-center bg-white border-emerald-200 shadow-sm"):"rounded-2xl p-4 border text-center bg-gray-50 border-gray-100 opacity-60")}>
-                  <div className="text-3xl mb-1">{b.icon}</div>
-                  <p className="font-bold text-sm leading-tight" style={b.earned&&b.lvl>0?{color:lc.text}:{}}>{b.name}</p>
-                  {b.cat&&<p className="text-xs font-semibold mt-0.5" style={{color:b.earned&&b.lvl>0?lc.text:'#9ca3af',opacity:0.75}}>{b.cat}</p>}
-                  <p className="text-xs text-gray-400 mt-1 leading-snug">{b.desc}</p>
-                  <p className={"text-xs mt-2 font-semibold "+(b.earned?(b.lvl>0?"":"text-emerald-600"):"text-gray-400")} style={b.earned&&b.lvl>0?{color:lc.text}:{}}>{b.earned?"✅ Conquistada":b.prog}</p>
-                </div>);
-              })}</div>
+              {[
+                {label:"⚽ Fase de Grupos",ids:[0,1,2,3,4,5]},
+                {label:"🏆 Mata-Mata",ids:[6,7,8,9]},
+                {label:"🌟 Previsões",ids:[10,11,12]},
+                {label:"📈 Ranking",ids:[13,14,15]},
+              ].map(cat=>(
+                <div key={cat.label} className="mb-5">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">{cat.label}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {cat.ids.map(i=>{
+                      const b=myBadges[i];if(!b)return null;
+                      const lvlColor=b.lvlColor||null;
+                      const borderCls=b.earned?(lvlColor?'':"border-emerald-200"):"border-gray-100";
+                      const bgCls=b.earned?(lvlColor?'':"bg-white"):"bg-gray-50";
+                      const borderStyle=b.earned&&lvlColor?{border:`2px solid ${lvlColor.bg}`,background:lvlColor.bg+'22'}:{};
+                      return(
+                        <div key={i} className={`rounded-2xl p-4 border text-center ${bgCls} ${borderCls} ${b.earned?'shadow-sm':'opacity-60'}`} style={borderStyle}>
+                          <div className="text-3xl mb-1">{b.golden?'🎯':<span>{b.icon}</span>}{b.golden&&<span className="text-xl">🥇</span>}</div>
+                          <p className="font-bold text-gray-800 text-sm leading-tight">{b.name}</p>
+                          <p className="text-xs text-gray-400 mt-1 leading-snug">{b.desc}</p>
+                          {b.earned&&lvlColor?(
+                            <p className="text-xs mt-2 font-bold rounded-full px-2 py-0.5 inline-block" style={{background:lvlColor.bg,color:lvlColor.text}}>✅ Nv.{b.lvl}</p>
+                          ):(
+                            <p className={"text-xs mt-2 font-semibold "+(b.earned?"text-emerald-600":"text-gray-400")}>{b.earned?"✅ Conquistada":b.prog}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -725,7 +716,7 @@
           {tab==="acomp"&&(
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-3">{[{n:myPts,l:"Seus Pontos",c:"#10b981"},{n:myRank+"º",l:"Posição",c:"#8b5cf6"},{n:Object.values(profile.bets||{}).filter(b=>b.guess).length,l:"Apostas feitas",c:"#3b82f6"}].map((s,i)=>(<div key={i} className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100"><p className="text-2xl font-bold" style={{color:s.c}}>{s.n}</p><p className="text-xs text-gray-400 mt-1">{s.l}</p></div>))}</div>
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div className="px-4 py-3 border-b border-gray-50"><h3 className="font-semibold text-gray-700 text-sm">⏰ Próximos jogos</h3></div><div className="divide-y divide-gray-50">{matches.filter(m=>!m.result&&!isLocked(m.kickoff)).slice(0,5).map(m=>{const b=(profile.bets||{})[m.id];return(<div key={m.id} className="flex items-center justify-between px-4 py-3 gap-3"><div className="flex-1 min-w-0"><div className="flex items-center gap-2 text-sm font-medium text-gray-800 flex-wrap"><Flag name={m.team1} size="sm"/><span className="truncate">{tname(m.team1)}</span><span className="text-gray-300">×</span><span className="truncate">{tname(m.team2)}</span><Flag name={m.team2} size="sm"/></div><p className="text-xs text-gray-400 mt-0.5">{fmtDate(m.kickoff)} às {fmtTime(m.kickoff)}</p></div><span className={"text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap "+(b&&guess?"bg-emerald-100 text-emerald-700":"bg-gray-100 text-gray-400")}>{b&&guess||"sem aposta"}</span></div>);})}</div></div>
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div className="px-4 py-3 border-b border-gray-50"><h3 className="font-semibold text-gray-700 text-sm">⏰ Próximos jogos</h3></div><div className="divide-y divide-gray-50">{matches.filter(m=>!m.result&&!isLocked(m.kickoff)).slice(0,5).map(m=>{const b=(profile.bets||{})[m.id];return(<div key={m.id} className="flex items-center justify-between px-4 py-3 gap-3"><div className="flex-1 min-w-0"><div className="flex items-center gap-2 text-sm font-medium text-gray-800 flex-wrap"><Flag name={m.team1} size="sm"/><span className="truncate">{tname(m.team1)}</span><span className="text-gray-300">×</span><span className="truncate">{tname(m.team2)}</span><Flag name={m.team2} size="sm"/></div><p className="text-xs text-gray-400 mt-0.5">{fmtDate(m.kickoff)} às {fmtTime(m.kickoff)}</p></div><span className={"text-xs font-bold px-2 py-1 rounded-lg whitespace-nowrap "+(b?.guess?"bg-emerald-100 text-emerald-700":"bg-gray-100 text-gray-400")}>{b?.guess||"sem aposta"}</span></div>);})}</div></div>
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"><div className="px-4 py-3 border-b border-gray-50"><h3 className="font-semibold text-gray-700 text-sm">✅ Resultados recentes</h3></div><div className="divide-y divide-gray-50">{matches.filter(m=>m.result).slice(-5).reverse().map(m=>{const b=(profile.bets||{})[m.id]||{};const p=betPoints(b.guess,m.result);return(<div key={m.id} className="flex items-center justify-between px-4 py-3 gap-3"><div className="flex-1 min-w-0"><div className="flex items-center gap-2 text-sm font-medium text-gray-800 flex-wrap"><Flag name={m.team1} size="sm"/><span>{tname(m.team1)}</span><span className="font-bold text-gray-600">{m.result.replace("-"," - ")}</span><span>{tname(m.team2)}</span><Flag name={m.team2} size="sm"/></div><p className="text-xs text-gray-400 mt-0.5">Sua aposta: <b>{b.guess||"—"}</b></p></div><span className={"text-sm font-bold "+(p>0?"text-emerald-600":"text-red-400")}>{p>0?"+"+p:"0"}</span></div>);})}</div></div>
             </div>
           )}
@@ -739,17 +730,15 @@
                 {t:"🏆 Mata-Mata",items:[
                   "✅ Aposta até 10 min antes de cada jogo (horário SP)",
                   "🔄 Alteração: 1 vez por jogo",
-                  "📊 Pontuação:",
-                  "  🎯 Placar exato + quem avança = +25 pts",
-                  "  📌 Resultado certo (sem placar exato) + quem avança = +20 pts",
-                  "  🏆 Apenas quem avança certo (placar errado) = +10 pts",
-                  "Exemplo 1: você apostou 2-1 Brasil, saiu 2-1 Brasil e Brasil avançou → +25 pts",
-                  "Exemplo 2: você apostou 2-0 Brasil, saiu 3-1 Brasil e Brasil avançou → +20 pts",
-                  "Exemplo 3: você apostou 1-2 Argentina (sem placar exato), mas acertou que Argentina avança → +10 pts",
-                  "Empates: apostou 1-1 e acertou o placar + quem avança nos pênaltis → +25 pts"
+                  "Aposte o placar e quem avança (pênaltis incluídos):",
+                  "🎯 Vitória + placar exato + quem avança = 15 + 10 = 25 pts",
+                  "📌 Vitória correta (sem placar exato) + quem avança = 10 + 10 = 20 pts",
+                  "🤝 Empate exato nos 90min + quem avança certo = 15 + 10 = 25 pts",
+                  "🤝 Empate (sem placar exato) + quem avança certo = 10 + 10 = 20 pts",
+                  "💡 Ao apostar vitória de um time, ele já é selecionado como quem avança automaticamente",
                 ]},
                 {t:"🌟 Previsões",items:["📅 Até 20/06/2026 às 23h59 (SP)","🔄 1 alteração por campo após enviar","Campeão +50 · Vice +30 · 3º +20 · Artilheiro +25 · Melhor +40"]},
-                {t:"🏅 Conquistas",items:["São apenas visuais (não dão pontos)","1 conquista a cada 10 apostas na fase de grupos","1 conquista a cada 10 resultados certos (sem placar exato)","Conquistas por acertos, sequências, mata-mata e posição no ranking","Conquistas com level ganham cores especiais (azul → verde → dourado → roxo)"]}
+                {t:"🏅 Conquistas",items:["São apenas visuais (não dão pontos)","Fase de Grupos: apostas, placares exatos, sequências","Mata-Mata: apostas, placares exatos, quem avança","Previsões: envio, acerto do campeão, pódio completo","Ranking: pontuação e posição"]},
               ].map(s=>(<div key={s.t} className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100"><h3 className="font-bold text-gray-800 mb-2 text-sm">{s.t}</h3><ul className="space-y-1">{s.items.map((it,i)=><li key={i} className="text-xs text-gray-600">{it}</li>)}</ul></div>))}
               <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100"><h3 className="font-bold text-gray-800 mb-3 text-sm">💬 Dúvidas?</h3><a href="https://wa.me/5519981719881" target="_blank" className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-4 rounded-xl transition text-sm w-fit"><svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884"/></svg>(19) 98171-9881</a><p className="text-xs text-gray-400 mt-3">Criado por HCmaster</p></div>
             </div>
