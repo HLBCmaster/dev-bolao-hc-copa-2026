@@ -443,7 +443,7 @@
                               {/* Time 1 */}
                               <div className={`flex items-center px-2 gap-1.5 border-b border-gray-100 ${m.winner==='team1'?'bg-emerald-50':m.result?'bg-white':'bg-white'}`} style={{height:teamRowH}}>
                                 <Flag name={m.team1} size="sm"/>
-                                <span className={`font-semibold flex-1 truncate ${m.team1?'text-gray-800':'text-gray-400'}`} style={{fontSize:'12px'}}>{tname(m.team1||'?')}</span>
+                                <span className={`font-semibold flex-1 truncate ${m.team1?'text-gray-800':'text-gray-400'}`} style={{fontSize:'12px'}}>{tname(m.team1||'A definir')}</span>
                                 {m.result&&<span className={`font-bold shrink-0 ${m.winner==='team1'?'text-emerald-600':'text-gray-500'}`} style={{fontSize:'13px',minWidth:14,textAlign:'right'}}>{m.result.split('-')[0]}</span>}
                                 {!m.result&&koBet?.guess&&<span className="text-blue-400 shrink-0 font-bold" style={{fontSize:'11px'}}>{koBet.guess.split('-')[0]}</span>}
                                 {m.winner==='team1'&&<span className="text-emerald-500 shrink-0 ml-0.5" style={{fontSize:'11px'}}>▶</span>}
@@ -451,7 +451,7 @@
                               {/* Time 2 */}
                               <div className={`flex items-center px-2 gap-1.5 ${m.winner==='team2'?'bg-emerald-50':m.result?'bg-white':'bg-white'}`} style={{height:teamRowH}}>
                                 <Flag name={m.team2} size="sm"/>
-                                <span className={`font-semibold flex-1 truncate ${m.team2?'text-gray-800':'text-gray-400'}`} style={{fontSize:'12px'}}>{tname(m.team2||'?')}</span>
+                                <span className={`font-semibold flex-1 truncate ${m.team2?'text-gray-800':'text-gray-400'}`} style={{fontSize:'12px'}}>{tname(m.team2||'A definir')}</span>
                                 {m.result&&<span className={`font-bold shrink-0 ${m.winner==='team2'?'text-emerald-600':'text-gray-500'}`} style={{fontSize:'13px',minWidth:14,textAlign:'right'}}>{m.result.split('-')[1]}</span>}
                                 {!m.result&&koBet?.guess&&<span className="text-blue-400 shrink-0 font-bold" style={{fontSize:'11px'}}>{koBet.guess.split('-')[1]}</span>}
                                 {m.winner==='team2'&&<span className="text-emerald-500 shrink-0 ml-0.5" style={{fontSize:'11px'}}>▶</span>}
